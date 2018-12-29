@@ -1,0 +1,136 @@
+---
+title: "Graduate Student Symposium"
+author: ''
+output:
+  pdf_document:
+    fig_caption: yes
+    fig_height: 6
+    keep_tex: yes
+  
+includes:
+  in_header: 
+    -\usepackage[utf8x]{inputenc} 
+    -\usepackage{gensymb}
+    -\usepackage{textgreek}
+    -\pagenumbering{gobble}
+---
+
+```{r eval=TRUE, echo=FALSE, warnings=FALSE, comments=FALSE}
+dat <- read.csv('Graduate_submissions_2019.csv', stringsAsFactors=FALSE, colClasses = "character")
+library(stringr)
+# manually get rid of all the coauthor stuff from undergraduates 
+```
+
+```{r eval=TRUE, echo=FALSE, warnings=FALSE, comments=FALSE}
+#define support function(s)
+
+fuckSymbols <- function(row){
+ # row$Abstract <- gsub('/','//', row$Abstract)
+  row$Abstract <- gsub("\\\\degree", " degrees", row$Abstract)
+  row$Abstract <- gsub("\\\\testit", " \\textit", row$Abstract)
+  #row$Abstract <- gsub("\\\\$^","\\textsuperscript",row$Abstract) #can't deal with math mode
+  #row$Abstract <- gsub("\\\\$_","\\textsubscript",row$Abstract)
+  #row$Abstract <- gsub("\\\\}$","}",row$Abstract)
+  return(row$Abstract) 
+}
+
+
+# Main function that formats and outputs formatted abstract
+formatAbstract <- function(row){
+  #drop presenter name
+  #row$Name <- NULL
+  
+  # get column numbers with author names and institutions
+  authorNames <- grep('.name', names(row))
+  authorInst <- grep('.affiliation',  names(row))
+
+# find end of authors and truncate accordingly
+  cutOff <- lapply(row[authorNames], function(x){tmp <- length(unlist(strsplit(as.character(x),''))); })
+  authorNames <- ifelse(sum(unlist(cutOff)) == 0, "", authorNames[1:max(which(cutOff > 0))])
+  authorInst <- ifelse(sum(unlist(cutOff)) == 0, "", authorInst[1:max(which(cutOff > 0))])
+  #insert delimiter after UGA
+  row[authorInst] <- gsub('Georgia, ', "Georgia-", row[authorInst])
+  #split on delimiter
+  authAff <- (strsplit(unlist(row[authorInst]), split ="-"))
+  #get unique institutions
+  unInsts <- unique(unlist(authAff))
+  #match to authors
+  instInds <- lapply(authAff, function(x) which(unInsts %in% x))
+  #unlist nicely
+  affiliationNumbers <- character(length = length(instInds))
+  for (i in 1:length(instInds)){
+    affiliationNumbers[i] <- paste(instInds[[i]], collapse = ",")
+  }
+  
+  #make title upper case to get rid of mix of title case and not
+  title <- row$Presentation.Title
+# format author list
+  authors <- paste(row[authorNames], '\\textsuperscript{', affiliationNumbers, '}', c(rep(",", length(authorNames)-1), ""), sep='')
+  #authors[length(authors)] <- paste('and ', authors[length(authors)], sep='')
+  insts <- paste('(', unique(as.vector(unlist(instInds))),')  ', unInsts, ' \\\\', sep='')
+  abstract <- paste(fuckSymbols(row))
+
+  cat(paste("\\begin{center} \\textbf{",title,"} \\end{center}"))
+  cat("\\begin{center}", authors," \\end{center}")
+  cat("\\begin{center}", insts," \\end{center}")
+  cat("\\begin{flushleft}", abstract," \\end{flushleft}")
+  cat("\\vspace{1cm}")
+  #return(paste(title, ' \\ ', authors, ' \\ ', insts, abstract ))
+}
+
+
+formatAbstract_singleauthor<- function(row){
+   #make title upper case to get rid of mix of title case and not
+  title <- row$Presentation.Title
+# format author list
+  authors <-row$Presenting.Author.Name
+  #authors[length(authors)] <- paste('and ', authors[length(authors)], sep='')
+  insts <- row$Affiliation
+  abstract <- paste(fuckSymbols(row))
+
+  cat(paste("\\begin{center} \\textbf{",title,"} \\end{center}"))
+  cat("\\begin{center}", authors," \\end{center}")
+  cat("\\begin{center}", insts," \\end{center}")
+  cat("\\begin{flushleft}", abstract," \\end{flushleft}")
+  cat("\\vspace{1cm}")
+  #return(paste(title, ' \\ ', authors, ' \\ ', insts, abstract ))
+}
+
+```
+
+\vspace{1cm}
+
+
+```{r eval=TRUE, echo=FALSE, warnings=FALSE, comments=FALSE, results='asis'}
+#sort by last name of first author
+lastNames <- strsplit(dat$Presenting.Author.Name, " ")
+lastNames <- mapply('[[', lastNames, lengths(lastNames))
+
+dat <- dat[order(lastNames),]
+
+for(i in 1:2){
+  formatAbstract(dat[i,])
+  cat('\\vspace{2cm}')
+} 
+
+for(i in 3){
+  formatAbstract_singleauthor(dat[i,])
+  cat('\\vspace{2cm}')
+}
+
+for(i in 4:28){
+   formatAbstract(dat[i,])
+  cat('\\vspace{2cm}')
+}
+
+for(i in 29){
+   formatAbstract_singleauthor(dat[i,])
+  cat('\\vspace{2cm}')
+}
+
+for(i in 30){
+   formatAbstract(dat[i,])
+  cat('\\vspace{2cm}')
+}
+
+```
